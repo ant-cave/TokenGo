@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import Icon from '../components/Icon.vue'
 
 // 状态
 const secrets = ref([])
@@ -175,9 +176,7 @@ onUnmounted(() => {
     
     <!-- 空状态 -->
     <div v-else-if="secrets.length === 0" class="Box p-6 text-center">
-      <svg height="48" viewBox="0 0 16 16" fill="currentColor" class="color-fg-muted mb-3">
-        <path d="M3.5 11.5a3.5 3.5 0 1 1 3.163-5H14L15 6l-3 3-1-1-1 1-1-1-1 1-1-1-1 1-1-1H6.663A3.5 3.5 0 0 1 3.5 11.5Z"/>
-      </svg>
+      <Icon name="key" :size="48" class="color-fg-muted mb-3" />
       <p class="color-fg-muted mb-3">还没有添加任何密钥</p>
       <button class="btn btn-primary" @click="$router.push('/add')">
         添加第一个密钥
@@ -194,23 +193,19 @@ onUnmounted(() => {
         <div class="d-flex flex-items-center flex-justify-between mb-3">
           <h3 class="h4-mktg mb-0">{{ secret.name }}</h3>
           <div class="d-flex" style="gap: 8px;">
-            <button 
-              class="btn btn-sm" 
+            <button
+              class="btn btn-sm"
               @click="openSecretModal(secret)"
               title="查看密钥"
             >
-              <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
-                <path d="M8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.45.678-1.367 1.932-2.637 3.023C11.67 13.008 9.981 14 8 14c-1.981 0-3.671-.992-4.933-2.078C1.797 10.83.88 9.576.43 8.898a1.62 1.62 0 0 1 0-1.798c.45-.678 1.367-1.932 2.637-3.023C4.33 2.992 6.019 2 8 2ZM1.679 7.932a.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.872 6.54 12.5 8 12.5c1.46 0 2.824-.628 3.955-1.715 1.125-.967 1.955-2.095 2.366-2.717a.12.12 0 0 0 0-.136c-.411-.622-1.241-1.75-2.366-2.717C10.824 4.128 9.46 3.5 8 3.5c-1.46 0-2.824.628-3.955 1.715-1.125.967-1.955 2.095-2.366 2.717ZM8 10a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/>
-              </svg>
+              <Icon name="eye" :size="14" />
             </button>
-            <button 
-              class="btn btn-sm btn-danger" 
+            <button
+              class="btn btn-sm btn-danger"
               @click="openDeleteModal(secret)"
               title="删除"
             >
-              <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
-                <path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675a.75.75 0 1 0-1.492.15l.66 6.6A1.75 1.75 0 0 0 5.405 15h5.19c.9 0 1.652-.681 1.741-1.576l.66-6.6a.75.75 0 0 0-1.492-.149l-.66 6.6a.25.25 0 0 1-.249.225h-5.19a.25.25 0 0 1-.249-.225l-.66-6.6Z"/>
-              </svg>
+              <Icon name="trash" :size="14" />
             </button>
           </div>
         </div>

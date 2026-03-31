@@ -58,6 +58,8 @@ onMounted(async () => {
 @media (max-width: 768px) {
   .app-layout {
     flex-direction: column;
+    border: none !important;
+    border-radius: 0 !important;
   }
   
   .gh-sidebar {
