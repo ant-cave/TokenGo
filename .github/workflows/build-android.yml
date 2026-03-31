@@ -1,0 +1,49 @@
+name: Build Android APK
+
+on:
+  push:
+    tags:
+      - 'v*' # 推送 v1.0.0 等标签时触发
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Install System Dependencies (Ubuntu)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Install Pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+          run_install: true
+
+      - name: Setup Android Environment
+        uses: android-actions/setup-android@v3
+        # 这个动作会自动安装 SDK, NDK, Build-tools 并配置好环境变量
+
+      - name: Build APK (Debug for testing)
+        run: pnpm tauri android build --target aarch64-linux-android --debug
+        # 注意：正式打包请去掉 --debug，并配置下面的签名步骤
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: src-tauri/target/aarch64-linux-android/debug/*.apk
+          # 正式发布时路径改为 release 文件夹

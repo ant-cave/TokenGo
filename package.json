@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@primer/css": "^20.8.3",
+    "@primer/octicons": "^19.23.1",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
     "vue": "^3.5.13",
