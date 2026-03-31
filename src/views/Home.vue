@@ -176,7 +176,7 @@ onUnmounted(() => {
     
     <!-- 空状态 -->
     <div v-else-if="secrets.length === 0" class="Box p-6 text-center">
-      <Icon name="key" :size="48" class="color-fg-muted mb-3" />
+      <img src="/icon.png" alt="TokenGo" style="width: 48px; height: 48px; margin-bottom: 12px; opacity: 0.5;" />
       <p class="color-fg-muted mb-3">还没有添加任何密钥</p>
       <button class="btn btn-primary" @click="$router.push('/add')">
         添加第一个密钥
