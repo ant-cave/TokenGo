@@ -95,7 +95,7 @@ async function logout() {
   </aside>
   <button class="gh-card-action sidebar-toggle" @click="toggleSidebar">
     <span class="sidebar-toggle-icon" :style="{ transform: isSidebarOpen ? 'rotate(0deg)' : 'rotate(180deg)' }">
-      <
+      &lt;
     </span>
   </button>
 </template>
@@ -131,7 +131,7 @@ async function logout() {
   transition: width, padding 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   flex-shrink: 0;
-  background: var(--bgColor-default);
+  background-color: var(--bgColor-default);
 }
 
 .gh-sidebar.collapsed {
@@ -159,17 +159,20 @@ async function logout() {
     height: 100%;
     width: 100%;
     z-index: 100;
-    /* 强制不透明背景 */
-    background-color: #0d1117 !important;
+    /* 默认亮色背景 */
+    background-color: #ffffff !important;
+    opacity: 1 !important;
   }
 
   .gh-sidebar:not(.collapsed) {
     width: 100%;
-    background-color: #0d1117 !important;
+    background-color: #ffffff !important;
+    opacity: 1 !important;
   }
 
   .gh-sidebar.collapsed {
-    background-color: #0d1117 !important;
+    width: 0;
+    opacity: 0 !important;
     pointer-events: none;
   }
 
@@ -180,6 +183,8 @@ async function logout() {
   .sidebar-toggle {
     left: calc(100% - 46px) !important;
     right: auto !important;
+    top: auto !important;
+    bottom: 16px !important;
   }
 
   .gh-sidebar.collapsed + .sidebar-toggle {
@@ -187,8 +192,31 @@ async function logout() {
   }
 
   .gh-sidebar:not(.collapsed) + .sidebar-toggle {
-    left: calc(100% - 46px) !important;
+    left: auto !important;
+    right: 16px !important;
     z-index: 101;
+  }
+}
+
+/* 暗色模式 - 根据 data-color-mode 属性 */
+@media (orientation: portrait) {
+  [data-color-mode="dark"] .gh-sidebar,
+  [data-color-mode="dark"] .gh-sidebar:not(.collapsed) {
+    background-color: #0d1117 !important;
+  }
+}
+</style>
+
+<style>
+/* 非 scoped 样式，确保竖屏模式下侧边栏背景正常 */
+@media (orientation: portrait) {
+  .gh-sidebar {
+    background-color: #ffffff !important;
+  }
+  
+  /* 暗色模式 - 根据 data-color-mode 属性 */
+  [data-color-mode="dark"] .gh-sidebar {
+    background-color: #0d1117 !important;
   }
 }
 </style>

@@ -1,14 +1,32 @@
 use rusqlite::{Connection, Result};
 use std::fs;
-use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Mutex;
+use tauri::Manager;
 
 // 用 Mutex 包装 Connection 实现线程安全
 // 本来想用 RwLock，但 rusqlite Connection 也不支持 Sync
 static DB: Mutex<Option<Connection>> = Mutex::new(None);
 
+// 获取数据库目录路径
+// 安卓上使用应用私有目录，桌面端使用 AppData
+fn get_data_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    // 使用 Tauri 提供的 API 获取应用数据目录
+    // 安卓：/data/data/<package_name>/databases
+    // Windows: C:\Users\<user>\AppData\Roaming\<bundle_id>
+    // macOS: ~/Library/Application Support/<bundle_id>
+    // Linux: ~/.config/<bundle_id>
+    let data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("获取应用数据目录失败：{}", e))?;
+    
+    Ok(data_dir)
+}
+
 // 数据库初始化入口
-pub fn init_db() -> Result<()> {
+// 需要在 app 启动时调用，传入 app handle
+pub fn init_db(app: &tauri::AppHandle) -> Result<()> {
     let mut db_lock = DB.lock().unwrap();
     
     // 检查是否已初始化
@@ -16,11 +34,15 @@ pub fn init_db() -> Result<()> {
         return Ok(());
     }
 
-    // 确保 data 目录存在
-    let data_dir = Path::new("./data");
+    // 获取正确的数据目录
+    let data_dir = get_data_dir(app).map_err(|e| {
+        rusqlite::Error::InvalidPath(PathBuf::from(e))
+    })?;
+    
+    // 确保目录存在
     if !data_dir.exists() {
-        fs::create_dir_all(data_dir).map_err(|e| {
-            rusqlite::Error::InvalidPath(format!("创建目录失败: {}", e).into())
+        fs::create_dir_all(&data_dir).map_err(|e| {
+            rusqlite::Error::InvalidPath(PathBuf::from(format!("创建目录失败：{}", e)))
         })?;
     }
 
@@ -51,6 +73,15 @@ pub fn init_db() -> Result<()> {
         [],
     )?;
 
+    // 创建设置表（存储主题等用户偏好）
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )",
+        [],
+    )?;
+
     // 存入全局
     *db_lock = Some(conn);
 
@@ -65,12 +96,43 @@ pub fn get_db() -> Option<std::sync::MutexGuard<'static, Option<Connection>>> {
 
 // 测试用的重置函数，清空数据
 pub fn reset_db() -> Result<()> {
-    let mut db_lock = DB.lock().unwrap();
+    let db_lock = DB.lock().unwrap();
     if let Some(ref conn) = *db_lock {
         conn.execute("DELETE FROM master_password", [])?;
         conn.execute("DELETE FROM totp_secrets", [])?;
     }
     Ok(())
+}
+
+// 保存设置
+pub fn save_setting(key: &str, value: &str) -> Result<(), String> {
+    let db_guard = get_db().ok_or("数据库未初始化")?;
+    let conn = db_guard.as_ref().ok_or("数据库连接不存在")?;
+    
+    conn.execute(
+        "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, ?2)",
+        [key, value],
+    ).map_err(|e| format!("保存设置失败: {}", e))?;
+    
+    Ok(())
+}
+
+// 获取设置
+pub fn get_setting(key: &str) -> Result<Option<String>, String> {
+    let db_guard = get_db().ok_or("数据库未初始化")?;
+    let conn = db_guard.as_ref().ok_or("数据库连接不存在")?;
+    
+    let result: Result<String, rusqlite::Error> = conn.query_row(
+        "SELECT value FROM settings WHERE key = ?1",
+        [key],
+        |row| row.get(0),
+    );
+    
+    match result {
+        Ok(value) => Ok(Some(value)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(format!("查询设置失败: {}", e)),
+    }
 }
 
 // 单元测试

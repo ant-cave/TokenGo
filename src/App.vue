@@ -7,9 +7,37 @@ import Sidebar from './components/Sidebar.vue'
 const router = useRouter()
 const route = useRoute()
 
+// 应用主题
+function applyTheme(mode) {
+  const html = document.documentElement
+  html.removeAttribute('data-color-mode')
+  
+  if (mode === 'system') {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    html.setAttribute('data-color-mode', prefersDark ? 'dark' : 'light')
+  } else {
+    html.setAttribute('data-color-mode', mode)
+  }
+}
+
+// 加载并应用保存的主题
+async function loadTheme() {
+  try {
+    const theme = await invoke('get_theme')
+    applyTheme(theme)
+  } catch (e) {
+    console.error('加载主题失败:', e)
+    // 失败时用 system 兜底
+    applyTheme('system')
+  }
+}
+
 // 检查登录状态，未登录时重定向到登录页
 onMounted(async () => {
-  // 在 auth 页面不需要检查
+  // 先加载主题（不管在哪个页面都要加载）
+  await loadTheme()
+  
+  // 在 auth 页面不需要检查登录
   if (route.path === '/auth' || route.path === '/') {
     return
   }
@@ -42,8 +70,6 @@ onMounted(async () => {
 .app-layout {
   display: flex;
   height: 100vh;
-  border: 1px solid var(--borderColor-default, #d1d9e0);
-  border-radius: 6px;
   overflow: hidden;
 }
 
@@ -58,8 +84,6 @@ onMounted(async () => {
 @media (max-width: 768px) {
   .app-layout {
     flex-direction: column;
-    border: none !important;
-    border-radius: 0 !important;
   }
   
   .gh-sidebar {

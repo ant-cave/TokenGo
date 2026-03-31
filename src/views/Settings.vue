@@ -13,13 +13,15 @@ const confirmNewPassword = ref('')
 const passwordError = ref('')
 const passwordSuccess = ref('')
 
-// 加载保存的主题设置
-onMounted(() => {
-  const saved = localStorage.getItem('tokengo-theme')
-  if (saved) {
+// 加载保存的主题设置（从数据库）
+onMounted(async () => {
+  try {
+    const saved = await invoke('get_theme')
     theme.value = saved
+    applyTheme(theme.value)
+  } catch (e) {
+    console.error('加载主题失败:', e)
   }
-  applyTheme(theme.value)
 })
 
 // 应用主题
@@ -27,7 +29,7 @@ function applyTheme(mode) {
   const html = document.documentElement
   // 先清除之前的设置
   html.removeAttribute('data-color-mode')
-  
+
   if (mode === 'system') {
     // 检测系统偏好
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -38,10 +40,15 @@ function applyTheme(mode) {
 }
 
 // 切换主题
-function changeTheme(mode) {
+async function changeTheme(mode) {
   theme.value = mode
-  localStorage.setItem('tokengo-theme', mode)
   applyTheme(mode)
+  // 保存到数据库
+  try {
+    await invoke('save_theme', { theme: mode })
+  } catch (e) {
+    console.error('保存主题失败:', e)
+  }
 }
 
 // 修改密码

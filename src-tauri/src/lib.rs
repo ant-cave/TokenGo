@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::State;
+use tauri::Manager;
 
 mod crypto;
 mod db;
@@ -29,8 +30,9 @@ struct AddSecretRequest {
 
 // 初始化数据库
 #[tauri::command]
-fn init_database() -> Result<(), String> {
-    db::init_db().map_err(|e| format!("数据库初始化失败: {}", e))
+fn init_database(window: tauri::Window) -> Result<(), String> {
+    let app = window.app_handle();
+    db::init_db(&app).map_err(|e| format!("数据库初始化失败：{}", e))
 }
 
 // 检查是否已设置主密码
@@ -305,9 +307,9 @@ fn parse_otpauth_uri(uri: String) -> Result<AddSecretRequest, String> {
 
 // 内部 TOTP 生成实现（RFC 6238）
 fn generate_totp(secret: &str) -> Result<String, String> {
-    // Base32 解码密钥 - 注意大小写 Rfc4648
-    let key = base32::decode(base32::Alphabet::Rfc4648 { padding: false }, secret)
-        .or_else(|| base32::decode(base32::Alphabet::Rfc4648 { padding: true }, secret))
+    // Base32 解码密钥 - 注意大小写 RFC4648
+    let key = base32::decode(base32::Alphabet::RFC4648 { padding: false }, secret)
+        .or_else(|| base32::decode(base32::Alphabet::RFC4648 { padding: true }, secret))
         .ok_or("密钥 Base32 解码失败")?;
 
     // 获取当前时间步（30秒一个步长）
@@ -354,6 +356,23 @@ fn get_time_remaining() -> u8 {
     remaining as u8
 }
 
+// 保存主题设置
+#[tauri::command]
+fn save_theme(theme: String) -> Result<(), String> {
+    db::save_setting("theme", &theme)
+}
+
+// 获取主题设置
+#[tauri::command]
+fn get_theme() -> Result<String, String> {
+    match db::get_setting("theme")? {
+        Some(theme) => Ok(theme),
+        None => Ok("system".to_string()), // 默认跟随系统
+    }
+}
+
+// 移动端入口点
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -374,6 +393,8 @@ pub fn run() {
             delete_totp_secret,
             parse_otpauth_uri,
             get_time_remaining,
+            save_theme,
+            get_theme,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

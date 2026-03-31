@@ -1,0 +1,8 @@
+# Android 签名配置
+# 使用 keytool 生成密钥库后填写以下信息
+# 生成命令：keytool -genkey -v -keystore release.keystore -alias tokengo -keyalg RSA -keysize 2048 -validity 10000
+
+storeFile=release.keystore
+storePassword=你的密钥库密码
+keyAlias=tokengo
+keyPassword=你的密钥密码
