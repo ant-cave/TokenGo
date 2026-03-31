@@ -23,10 +23,21 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["msi", "nsis"],
     "icon": [
       "icons/icon.png",
       "icons/icon.ico"
-    ]
+    ],
+    "resources": [],
+    "externalBin": [],
+    "windows": {
+      "wix": null,
+      "nsis": {
+        "compression": "lzma"
+      }
+    },
+    "android": {
+  "minSdkVersion": 21 
+    }
   }
 }

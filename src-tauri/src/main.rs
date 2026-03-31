@@ -2,5 +2,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    tokengo_lib::run()
+    use tokengo_lib::run;
+    run()
 }
