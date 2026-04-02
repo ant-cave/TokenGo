@@ -15,6 +15,22 @@ const selectedSecret = ref(null)
 const plaintextSecret = ref('')
 const confirmPassword = ref('')
 const secretError = ref('')
+const isLongPressing = ref(false)
+let pressTimer = null
+
+// 长按查看明文
+function startLongPress(secret) {
+  isLongPressing.value = true
+  pressTimer = setTimeout(() => {
+    openSecretModal(secret)
+    isLongPressing.value = false
+  }, 500) // 500ms 长按
+}
+
+function cancelLongPress() {
+  clearTimeout(pressTimer)
+  isLongPressing.value = false
+}
 
 // 删除相关
 const showDeleteModal = ref(false)
@@ -79,11 +95,25 @@ function startTimer() {
 async function copyCode(code) {
   try {
     await navigator.clipboard.writeText(code)
-    // 简单的视觉反馈，可以改进
-    alert('已复制: ' + code)
+    showCopyToast(code)
   } catch (e) {
     console.error('复制失败:', e)
   }
+}
+
+// 显示复制提示
+const showToast = ref(false)
+const toastMessage = ref('')
+let toastTimer = null
+
+function showCopyToast(code) {
+  toastMessage.value = '已复制: ' + code
+  showToast.value = true
+  
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    showToast.value = false
+  }, 500)
 }
 
 // 打开查看明文弹窗
@@ -195,8 +225,12 @@ onUnmounted(() => {
           <div class="d-flex" style="gap: 8px;">
             <button
               class="btn btn-sm"
-              @click="openSecretModal(secret)"
-              title="查看密钥"
+              @mousedown="startLongPress(secret)"
+              @mouseup="cancelLongPress()"
+              @mouseleave="cancelLongPress()"
+              @touchstart="startLongPress(secret)"
+              @touchend="cancelLongPress()"
+              :title="isLongPressing ? '松开查看' : '长按查看密钥'"
             >
               <Icon name="eye" :size="14" />
             </button>
@@ -216,7 +250,7 @@ onUnmounted(() => {
           style="background-color: var(--bgColor-muted); cursor: pointer;"
           @click="copyCode(codes[secret.id]?.code || '------')"
         >
-          <span class="f1-mktg" style="font-family: monospace; letter-spacing: 4px;">
+          <span class="f1-mktg" style="font-family: 'Arial', 'Helvetica', sans-serif; letter-spacing: 4px;">
             {{ codes[secret.id]?.code || '------' }}
           </span>
           <span class="text-small color-fg-muted">点击复制</span>
@@ -255,7 +289,7 @@ onUnmounted(() => {
         
         <div v-else class="flash mb-3">
           <div class="text-small color-fg-muted mb-1">密钥 (Base32):</div>
-          <code class="text-mono" style="word-break: break-all;">{{ plaintextSecret }}</code>
+          <code style="word-break: break-all; font-family: 'Arial', 'Helvetica', sans-serif; font-size: 13px; line-height: 1.6;">{{ plaintextSecret }}</code>
         </div>
         
         <div v-if="secretError" class="flash flash-error mb-3 text-small">
@@ -306,6 +340,11 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+    
+    <!-- 复制提示 -->
+    <div v-if="showToast" class="copy-toast">
+      {{ toastMessage }}
+    </div>
   </div>
 </template>
 
@@ -331,6 +370,25 @@ onUnmounted(() => {
 .modal-content {
   max-height: 90vh;
   overflow: auto;
+}
+
+.copy-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  background-color: var(--color-success-emphasis);
+  color: white;
+  border-radius: 6px;
+  font-size: 14px;
+  z-index: 1000;
+  animation: all 0.2s ease-in-out;
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0; }
+  10%, 90% { opacity: 1; }
 }
 
 .f1-mktg {

@@ -9,19 +9,32 @@ use tauri::Manager;
 static DB: Mutex<Option<Connection>> = Mutex::new(None);
 
 // 获取数据库目录路径
-// 安卓上使用应用私有目录，桌面端使用 AppData
+// 桌面端：使用项目目录下的 ./data/ 文件夹
+// 安卓：使用应用私有目录
 fn get_data_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    // 使用 Tauri 提供的 API 获取应用数据目录
-    // 安卓：/data/data/<package_name>/databases
-    // Windows: C:\Users\<user>\AppData\Roaming\<bundle_id>
-    // macOS: ~/Library/Application Support/<bundle_id>
-    // Linux: ~/.config/<bundle_id>
-    let data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("获取应用数据目录失败：{}", e))?;
+    // 判断是否为移动端
+    #[cfg(mobile)]
+    {
+        let data_dir = app
+            .path()
+            .app_data_dir()
+            .map_err(|e| format!("获取应用数据目录失败：{}", e))?;
+        Ok(data_dir)
+    }
     
-    Ok(data_dir)
+    #[cfg(desktop)]
+    {
+        // 桌面端使用项目目录下的 ./data/ 文件夹
+        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
+        let data_dir = PathBuf::from(&manifest_dir).join("data");
+        
+        // 确保目录存在
+        fs::create_dir_all(&data_dir).map_err(|e| {
+            format!("创建 data 目录失败：{}", e)
+        })?;
+        
+        Ok(data_dir)
+    }
 }
 
 // 数据库初始化入口

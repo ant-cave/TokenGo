@@ -10,6 +10,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
     "@primer/css": "^20.8.3",
     "@primer/octicons": "^19.23.1",
     "@tauri-apps/api": "^2",

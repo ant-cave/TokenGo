@@ -371,6 +371,55 @@ fn get_theme() -> Result<String, String> {
     }
 }
 
+// 修改主密码
+#[tauri::command]
+fn change_master_password(
+    state: State<AppState>,
+    old_password: String,
+    new_password: String,
+) -> Result<(), String> {
+    if new_password.len() < 6 {
+        return Err("新密码至少6位".to_string());
+    }
+
+    let db_guard = db::get_db().ok_or("数据库未初始化")?;
+    let conn = db_guard.as_ref().ok_or("数据库连接不存在")?;
+
+    // 先验证旧密码是否正确
+    let (stored_hash, salt): (String, String) = conn
+        .query_row(
+            "SELECT password_hash, salt FROM master_password WHERE id = 1",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .map_err(|e| format!("查询密码失败: {}", e))?;
+
+    if !crypto::verify_password(&old_password, &stored_hash, &salt) {
+        return Err("原密码错误".to_string());
+    }
+
+    // 生成新的哈希和盐值
+    let (new_hash, new_salt) = crypto::hash_password(&new_password);
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+
+    // 更新数据库
+    conn.execute(
+        "UPDATE master_password SET password_hash = ?1, salt = ?2, created_at = ?3 WHERE id = 1",
+        [&new_hash, &new_salt, &now.to_string()],
+    )
+    .map_err(|e| format!("更新密码失败: {}", e))?;
+
+    // 更新内存中的派生密钥
+    let salt_bytes = crypto::decode_base64(&new_salt).map_err(|e| e.to_string())?;
+    let new_key = crypto::derive_key(&new_password, &salt_bytes);
+    *state.master_key.lock().unwrap() = Some(new_key);
+
+    Ok(())
+}
+
 // 移动端入口点
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -395,6 +444,7 @@ pub fn run() {
             get_time_remaining,
             save_theme,
             get_theme,
+            change_master_password,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
