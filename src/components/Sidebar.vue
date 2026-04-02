@@ -130,6 +130,13 @@ async function logout() {
   overflow: hidden;
   flex-shrink: 0;
   background-color: var(--bgColor-default);
+  /* 禁止侧边栏滚动 */
+  overscroll-behavior: none;
+  scrollbar-width: none;
+}
+
+.gh-sidebar::-webkit-scrollbar {
+  display: none;
 }
 
 .gh-sidebar.collapsed {

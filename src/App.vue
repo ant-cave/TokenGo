@@ -80,9 +80,11 @@ onMounted(async () => {
     </main>
   </div>
 </template>
-
-<style>
-.app-layout {
+  
+  <style>
+  @import './styles/safe-area.css';
+  
+  .app-layout {
   display: flex;
   height: 100vh;
   overflow: hidden;
@@ -115,5 +117,16 @@ onMounted(async () => {
 
 a {
   text-decoration: none !important;
+}
+
+/* 禁止选中文本，除了输入框 */
+* {
+  user-select: none !important;
+}
+
+input,
+textarea,
+[contenteditable="true"] {
+  user-select: text !important;
 }
 </style>
