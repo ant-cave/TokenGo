@@ -1,0 +1,74 @@
+/* 安全区适配 - 处理挖孔屏/刘海屏/底部横条 */
+/* iOS 11+ 和现代 Android 都需要 */
+
+/* 顶部安全区 - 刘海/挖孔区域 */
+.safe-area-inset-top {
+  padding-top: env(safe-area-inset-top, 0);
+}
+
+/* 底部安全区 - 横条区域 */
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* 左侧安全区 */
+.safe-area-inset-left {
+  padding-left: env(safe-area-inset-left, 0);
+}
+
+/* 右侧安全区 */
+.safe-area-inset-right {
+  padding-right: env(safe-area-inset-right, 0);
+}
+
+/* 四边安全区 - 完整适配 */
+.safe-area {
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+}
+
+/* 仅移动端需要（竖屏为主） */
+@media (max-width: 768px) {
+  /* 顶部安全区 */
+  .app-layout {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+  
+  /* 底部安全区 - 防止被手机底部横条遮挡 */
+  .main-content {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0));
+  }
+  
+  /* 侧边栏底部安全区 */
+  .gh-sidebar {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
+
+/* 横屏模式适配（平板或旋转） */
+@media (max-height: 768px) and (min-width: 769px) {
+  .app-layout {
+    padding-left: env(safe-area-inset-left, 0);
+    padding-right: env(safe-area-inset-right, 0);
+  }
+}
+
+/* 强制处理 - 确保内容不被遮挡 */
+body {
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+}
+
+/* iOS 横屏特殊处理 */
+@supports (padding-top: env(safe-area-inset-top)) {
+  @media (orientation: landscape) {
+    .app-layout {
+      padding-left: env(safe-area-inset-left, 0);
+      padding-right: env(safe-area-inset-right, 0);
+    }
+  }
+}
