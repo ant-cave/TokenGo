@@ -26,15 +26,30 @@ async function loadTheme() {
     const theme = await invoke('get_theme')
     applyTheme(theme)
   } catch (e) {
-    console.error('加载主题失败:', e)
-    // 失败时用 system 兜底
+    // 数据库未初始化时会报错，静默处理用 system 兜底
+    // 只在非连接错误时打印日志，避免启动时的干扰
+    if (!e?.toString()?.includes('数据库连接不存在')) {
+      console.error('加载主题失败:', e)
+    }
     applyTheme('system')
+  }
+}
+
+// 初始化数据库（如果还没初始化）
+async function initDb() {
+  try {
+    await invoke('init_database')
+  } catch (e) {
+    // 已初始化或其它错误，静默处理
   }
 }
 
 // 检查登录状态，未登录时重定向到登录页
 onMounted(async () => {
-  // 先加载主题（不管在哪个页面都要加载）
+  // 先初始化数据库（确保后续命令能正常执行）
+  await initDb()
+  
+  // 再加载主题（不管在哪个页面都要加载）
   await loadTheme()
   
   // 在 auth 页面不需要检查登录

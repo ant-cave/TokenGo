@@ -92,7 +92,7 @@ async function logout() {
     </nav>
   </aside>
   <button class="gh-card-action sidebar-toggle" @click="toggleSidebar">
-    <span class="sidebar-toggle-icon" :style="{ transform: isSidebarOpen ? 'rotate(0deg)' : 'rotate(180deg)' }">
+    <span class="sidebar-toggle-icon" :style="{ transform: isSidebarOpen ? 'rotate(0deg)' : 'rotate(180deg)' }" style="transition: all 0.2s ease-in-out;">
       &lt;
     </span>
   </button>
