@@ -398,23 +398,62 @@ fn change_master_password(
         return Err("原密码错误".to_string());
     }
 
+    // 获取旧密钥，用于解密现有数据
+    let salt_bytes_old = crypto::decode_base64(&salt).map_err(|e| e.to_string())?;
+    let old_key = crypto::derive_key(&old_password, &salt_bytes_old);
+
     // 生成新的哈希和盐值
     let (new_hash, new_salt) = crypto::hash_password(&new_password);
+
+    // 获取新密钥
+    let salt_bytes_new = crypto::decode_base64(&new_salt).map_err(|e| e.to_string())?;
+    let new_key = crypto::derive_key(&new_password, &salt_bytes_new);
+
+    // 先收集所有需要重新加密的密钥数据
+    // 注意：这里必须在单独的作用域里完成查询，让 stmt 先 drop
+    let secrets_to_update: Vec<(i64, String, String)> = {
+        let mut stmt = conn
+            .prepare("SELECT id, encrypted_secret, nonce FROM totp_secrets")
+            .map_err(|e| format!("查询密钥失败: {}", e))?;
+
+        let rows: Vec<rusqlite::Result<(i64, String, String)>> = stmt
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+            .map_err(|e| format!("查询密钥失败: {}", e))?
+            .collect();
+
+        rows.into_iter().filter_map(|r| r.ok()).collect()
+    };
+
+    // 重新加密并更新
+    for (id, encrypted, nonce) in secrets_to_update {
+        // 用旧密钥解密
+        let plaintext = crypto::decrypt(&encrypted, &nonce, &old_key)
+            .map_err(|e| format!("解密密钥失败: {}", e))?;
+
+        // 用新密钥重新加密
+        let (new_encrypted, new_nonce) = crypto::encrypt(&plaintext, &new_key);
+
+        // 更新数据库
+        conn.execute(
+            "UPDATE totp_secrets SET encrypted_secret = ?1, nonce = ?2 WHERE id = ?3",
+            rusqlite::params![new_encrypted, new_nonce, id],
+        )
+        .map_err(|e| format!("更新密钥失败: {}", e))?;
+    }
+
+    // 更新数据库中的密码记录（放在最后，确保密钥重加密成功）
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_secs() as i64;
 
-    // 更新数据库
     conn.execute(
         "UPDATE master_password SET password_hash = ?1, salt = ?2, created_at = ?3 WHERE id = 1",
-        [&new_hash, &new_salt, &now.to_string()],
+        rusqlite::params![new_hash, new_salt, now],
     )
     .map_err(|e| format!("更新密码失败: {}", e))?;
 
     // 更新内存中的派生密钥
-    let salt_bytes = crypto::decode_base64(&new_salt).map_err(|e| e.to_string())?;
-    let new_key = crypto::derive_key(&new_password, &salt_bytes);
     *state.master_key.lock().unwrap() = Some(new_key);
 
     Ok(())

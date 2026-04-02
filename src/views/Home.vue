@@ -15,22 +15,6 @@ const selectedSecret = ref(null)
 const plaintextSecret = ref('')
 const confirmPassword = ref('')
 const secretError = ref('')
-const isLongPressing = ref(false)
-let pressTimer = null
-
-// 长按查看明文
-function startLongPress(secret) {
-  isLongPressing.value = true
-  pressTimer = setTimeout(() => {
-    openSecretModal(secret)
-    isLongPressing.value = false
-  }, 500) // 500ms 长按
-}
-
-function cancelLongPress() {
-  clearTimeout(pressTimer)
-  isLongPressing.value = false
-}
 
 // 删除相关
 const showDeleteModal = ref(false)
@@ -225,12 +209,8 @@ onUnmounted(() => {
           <div class="d-flex" style="gap: 8px;">
             <button
               class="btn btn-sm"
-              @mousedown="startLongPress(secret)"
-              @mouseup="cancelLongPress()"
-              @mouseleave="cancelLongPress()"
-              @touchstart="startLongPress(secret)"
-              @touchend="cancelLongPress()"
-              :title="isLongPressing ? '松开查看' : '长按查看密钥'"
+              @click="openSecretModal(secret)"
+              title="查看密钥"
             >
               <Icon name="eye" :size="14" />
             </button>
