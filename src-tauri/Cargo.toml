@@ -1,13 +1,16 @@
 [package]
 name = "tokengo"
-version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+version = "0.2.0"
+description = "A lightweight TOTP password manager - 轻量级双因素认证工具"
+authors = ["ant-cave <ANTmmmmm@outlook.com>"]
 edition = "2021"
+license = "AGPL-3.0"
+repository = "https://github.com/ant-cave/TokenGo"
+homepage = "https://github.com/ant-cave/TokenGo"
 
 [lib]
 name = "tokengo_lib"
-crate-type = ["staticlib", "rlib"]
+crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

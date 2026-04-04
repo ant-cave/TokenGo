@@ -1,3 +1,19 @@
+// TokenGo - A lightweight TOTP password manager
+// Copyright (C) 2024 ant-cave <ANTmmmmm@outlook.com>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 use aes_gcm::{
     aead::{Aead, KeyInit},
     Aes256Gcm, Nonce,
@@ -6,7 +22,7 @@ use pbkdf2::pbkdf2_hmac;
 use rand::RngCore;
 use sha2::Sha256;
 
-// PBKDF2 迭代次数，10万应该够用了
+// PBKDF2 迭代次数，10 万应该够用了
 const PBKDF2_ITERATIONS: u32 = 100_000;
 // 密钥长度 32 字节 = 256 位
 const KEY_SIZE: usize = 32;

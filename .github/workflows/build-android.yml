@@ -3,13 +3,17 @@ name: Build Android APK
 on:
   push:
     tags:
-      - 'v*' # 推送 v1.0.0 等标签时触发
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
   build:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -35,15 +39,27 @@ jobs:
 
       - name: Setup Android Environment
         uses: android-actions/setup-android@v3
-        # 这个动作会自动安装 SDK, NDK, Build-tools 并配置好环境变量
 
-      - name: Build APK (Debug for testing)
-        run: pnpm tauri android build --target aarch64-linux-android --debug
-        # 注意：正式打包请去掉 --debug，并配置下面的签名步骤
+      - name: Setup Android Signing
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE }}" | base64 -d > src-tauri/gen/android/release.keystore
+          echo "storeFile=release.keystore" > src-tauri/gen/android/key.properties
+          echo "storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}" >> src-tauri/gen/android/key.properties
+          echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> src-tauri/gen/android/key.properties
+          echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> src-tauri/gen/android/key.properties
+        env:
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+      - name: Build APK (arm64-v8a only)
+        run: pnpm tauri android build --target aarch64-linux-android --release
+
+      - name: Upload APK to Release
+        uses: softprops/action-gh-release@v1
         with:
-          name: android-apk
-          path: src-tauri/target/aarch64-linux-android/debug/*.apk
-          # 正式发布时路径改为 release 文件夹
+          files: src-tauri/target/aarch64-linux-android/release/**/*.apk
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

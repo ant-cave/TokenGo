@@ -1,7 +1,11 @@
 {
   "name": "tokengo",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "description": "A lightweight TOTP password manager - 轻量级双因素认证工具",
+  "author": "ant-cave <ANTmmmmm@outlook.com>",
+  "license": "AGPL-3.0",
+  "repository": "https://github.com/ant-cave/TokenGo",
   "type": "module",
   "scripts": {
     "dev": "vite",
