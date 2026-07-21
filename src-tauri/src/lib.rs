@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::State;
 use tauri::Manager;
+use open_tauri_remote_webview::{RemoteUiConfig, RemoteUiExt};
 
 mod crypto;
 mod db;
@@ -464,8 +465,18 @@ fn change_master_password(
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(open_tauri_remote_webview::init())
         .manage(AppState {
             master_key: Mutex::new(None),
+        })
+        .setup(|app| {
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                handle.start_remote_ui(
+                    RemoteUiConfig::default().set_port(Some(9090)),
+                ).await.ok();
+            });
+            Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             init_database,

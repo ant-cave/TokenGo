@@ -1,3 +1,4 @@
+import "open-tauri-remote-webview/bridge-init";
 import { createApp } from "vue";
 import App from "./App.vue";
 import router from "./router";

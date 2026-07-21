@@ -27,5 +27,11 @@ export default defineConfig(async () => ({
       // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
     },
+    proxy: {
+      "/remote_ui_ws": {
+        target: "ws://127.0.0.1:9090",
+        ws: true,
+      },
+    },
   },
 }));

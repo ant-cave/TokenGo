@@ -7,4 +7,5 @@
 /gen/schemas
 
 # Database - exclude from hot reload
+/data/
 

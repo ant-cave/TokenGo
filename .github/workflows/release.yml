@@ -1,0 +1,205 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  DISPLAY: ":99"
+
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            name: linux-amd64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            name: windows-amd64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            name: macos-amd64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            name: macos-arm64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+            librsvg2-dev patchelf libssl-dev libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev libxdo-dev xvfb
+
+      - name: Start Xvfb
+        if: runner.os == 'Linux'
+        run: Xvfb :99 -screen 0 1024x768x24 &
+
+      - name: pnpm install
+        run: pnpm install
+
+      - name: Build frontend
+        run: pnpm build
+
+      - name: Build Tauri app
+        run: pnpm tauri build --target ${{ matrix.target }}
+
+      - name: Package artifact (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          cd src-tauri/target/${{ matrix.target }}/release
+          tar czf tokengo-${{ matrix.name }}-${{ github.ref_name }}.tar.gz \
+            tokengo bundle/
+          mv *.tar.gz ../../../../
+
+      - name: Package artifact (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path src-tauri\target\${{ matrix.target }}\release\tokengo.exe, src-tauri\target\${{ matrix.target }}\release\bundle -DestinationPath tokengo-${{ matrix.name }}-${{ github.ref_name }}.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tokengo-${{ matrix.name }}
+          path: tokengo-*-${{ github.ref_name }}.*
+          if-no-files-found: warn
+
+  android:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+            librsvg2-dev patchelf libssl-dev libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev xvfb
+
+      - name: Start Xvfb
+        run: Xvfb :99 -screen 0 1024x768x24 &
+
+      - name: pnpm install
+        run: pnpm install
+
+      - name: Build frontend
+        run: pnpm build
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Configure Android keystore
+        run: |
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > src-tauri/gen/android/release.keystore
+          fi
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" ]; then
+            cat > src-tauri/gen/android/key.properties <<EOF
+          storeFile=release.keystore
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
+          fi
+
+      - name: Build Android APK
+        run: pnpm tauri android build --target aarch64 -a release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: tokengo-android
+          path: src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
+          if-no-files-found: warn
+
+  publish:
+    needs: [desktop, android]
+    if: always() && !cancelled()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Gather release assets
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f \
+            \( -name "*.tar.gz" -o -name "*.zip" -o -name "*.msi" -o -name "*.exe" -o -name "*.apk" -o -name "*.dmg" -o -name "*.deb" -o -name "*.AppImage" \) \
+            -exec cp {} release-assets/ \;
+          cd release-assets
+          sha256sum * > checksums-${{ github.ref_name }}.txt
+
+      - name: Determine pre-release
+        id: check
+        run: |
+          TAG="${{ github.ref_name }}"
+          if echo "$TAG" | grep -qE 'alpha|beta|rc'; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          prerelease: ${{ steps.check.outputs.prerelease }}
+          generate_release_notes: true
+          files: release-assets/*
